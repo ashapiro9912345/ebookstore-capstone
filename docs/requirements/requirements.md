@@ -1,9 +1,9 @@
 # E-Bookstore Backend — Requirements Document
 
 **Project:** AI Specialist Capstone — E-Commerce Bookstore Backend  
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** 2026-10-04  
-**Status:** Draft — Awaiting Review  
+**Status:** Reviewed — Ready for Data Model Design  
 **Source Material:** AI Specialist - Cloud FullStack - Capstone instructions.pptx.pdf (Slides 3–12)
 
 ---
@@ -35,10 +35,12 @@
 
 | ID | Description | Related Screen / Action | Priority |
 |----|-------------|------------------------|----------|
-| FR-AUTH-01 | The system shall allow a customer to register a new account with name, email, and password. | Login Page (Slide 3, Step 1–2) | MVP |
-| FR-AUTH-02 | The system shall authenticate a customer using email and password, returning a session token. | User Authentication (Slide 3, Step 2) | MVP |
+| FR-AUTH-01 | The system shall allow a customer to register a new account with name, email, and password. | Login Page (Slide 3, Step 1–2) — registration implied as prerequisite to login | Secondary (see note) |
+| FR-AUTH-02 | The system shall authenticate a customer using email and password and establish an authenticated session. | User Authentication (Slide 3, Step 2) | MVP |
 | FR-AUTH-03 | The system shall protect all non-public endpoints so that only authenticated customers can access them. | All post-login screens | MVP |
-| FR-AUTH-04 | The system shall allow a customer to log out, invalidating their session. | Implied by authenticated session | MVP |
+| FR-AUTH-04 | The system shall allow a customer to log out. | Implied by authenticated session | Secondary (see note) |
+
+> **Note — FR-AUTH-01 and FR-AUTH-04:** The source material explicitly requires login/user authentication (Step 2) but does not clearly depict a registration screen or a logout action as standalone features. Registration is classified as Secondary because it is a reasonable prerequisite for demonstration but is not independently confirmed by the wireframes. Logout is classified as Secondary for the same reason. Both will be promoted to MVP if required to support a complete demonstration of the core journey. The specific Spring Security authentication mechanism (e.g., session-based, token-based) is an architectural decision deferred to the technical design phase.
 
 ### Product Catalogue & Browsing
 
@@ -47,7 +49,7 @@
 | FR-CAT-01 | The system shall maintain a catalogue of books available for purchase. | Landing Page (Slide 5); Catalogue Page (Slide 6) | MVP |
 | FR-CAT-02 | The system shall organise books into categories. | Catalogue — Select Category (Slide 6, Step 5) | MVP |
 | FR-CAT-03 | The system shall allow a customer to retrieve all books for a given category. | Catalogue — Category filter (Slide 6) | MVP |
-| FR-CAT-04 | The system shall allow a customer to search or browse books by brand/publisher. | Catalogue — Browse Brands (Slide 6, Step 6) | MVP |
+| FR-CAT-04 | The system shall allow a customer to search or browse books by brand or publisher. | Catalogue — Browse Brands (Slide 6, Step 6) | MVP |
 | FR-CAT-05 | The system shall return a detailed view of a single book, including title, author, price, description, and tentative delivery date. | Product Detail (Slide 6, Step 7) | MVP |
 | FR-CAT-06 | The system shall allow a customer to search for books by keyword (title, author, or category). | Landing Page / Catalogue (Slide 5–6) | MVP |
 | FR-CAT-07 | The system shall return related products for a selected book. | Product Detail — Related Products (Slide 6, Step 7) | Secondary |
@@ -60,7 +62,8 @@
 | FR-CART-02 | The system shall allow a customer to view the contents of their cart, including items, quantities, and total price. | Shopping Cart (Slide 7) | MVP |
 | FR-CART-03 | The system shall allow a customer to update the quantity of an item in the cart. | Shopping Cart (Slide 7) | MVP |
 | FR-CART-04 | The system shall allow a customer to remove an item from the cart. | Shopping Cart (Slide 7) | MVP |
-| FR-CART-05 | The system shall maintain a persistent cart for the authenticated customer across sessions. | Shopping Cart (Slide 7) | MVP |
+
+> **Note — cart persistence:** The source material does not explicitly require cart state to persist across sessions. Because the cart is stored in PostgreSQL by design, persistence may occur naturally, but cross-session cart continuity is not a capstone acceptance requirement at this stage.
 
 ### Delivery Address
 
@@ -68,7 +71,7 @@
 |----|-------------|------------------------|----------|
 | FR-ADDR-01 | The system shall allow a customer to add one or more delivery addresses to their account. | Payment & Purchase — Address (Slide 8, Step 9) | MVP |
 | FR-ADDR-02 | The system shall allow a customer to select a saved delivery address during checkout. | Payment & Purchase — Address (Slide 8, Step 9) | MVP |
-| FR-ADDR-03 | The system shall allow a customer to edit or delete a saved delivery address. | Implied by address management (Slide 8) | MVP |
+| FR-ADDR-03 | The system shall allow a customer to edit or delete a saved delivery address. | Implied by address management (Slide 8) | Secondary |
 
 ### Checkout & Payment
 
@@ -104,7 +107,7 @@
 | NFR-05 | Security | Sensitive payment information (card numbers, CVV) shall not be stored or logged by the application. |
 | NFR-06 | Security | API endpoints that operate on customer data shall verify that the authenticated user is the owner of that data. |
 | NFR-07 | Data Integrity | Foreign key relationships shall be enforced at the database level where appropriate. |
-| NFR-08 | Data Integrity | Order records shall be immutable after creation, except for the cancellation status field. |
+| NFR-08 | Data Integrity | The historical details of a confirmed order — specifically the items purchased, quantities, and unit prices at time of purchase — shall remain consistent and shall not be altered after order creation. Legitimate order status changes (such as cancellation) are permitted. |
 | NFR-09 | Error Handling | The application shall return structured JSON error responses with an appropriate HTTP status code and a human-readable message for all error conditions. |
 | NFR-10 | Error Handling | The application shall not expose internal stack traces or database errors in API responses. |
 | NFR-11 | Performance | The application shall perform adequately for demonstration-scale data (hundreds of books, tens of users, hundreds of orders). No enterprise-scale throughput requirements apply. |
@@ -129,9 +132,9 @@
 
 ### Authentication & Registration
 
-- As a **guest**, I want to register an account so that I can make purchases on the bookstore.
-- As a **guest**, I want to log in with my email and password so that I can access my cart and order history.
-- As a **customer**, I want to log out so that my account is secured on a shared device.
+- As a **guest**, I want to log in with my email and password so that I can access my cart and order history. *(MVP)*
+- As a **guest**, I want to register an account so that I can make purchases on the bookstore. *(Secondary — promoted to MVP if required for demonstration)*
+- As a **customer**, I want to log out so that my account is secured on a shared device. *(Secondary)*
 
 ### Product Browsing
 
@@ -174,7 +177,7 @@
 
 | # | Capability | Description |
 |---|-----------|-------------|
-| 1 | **User Registration & Authentication** | Register, authenticate, and manage customer sessions. |
+| 1 | **User Authentication** | Authenticate customers and protect non-public endpoints. Registration and logout are secondary unless required for demonstration. |
 | 2 | **Product Catalogue** | Maintain the book inventory; expose books with details, categories, and brands. |
 | 3 | **Category Management** | Organise books into browsable categories. |
 | 4 | **Product Search & Browse** | Support keyword search and filtered browsing by category and brand. |
@@ -194,13 +197,13 @@ The application is a **modular monolith**. Domain boundaries define code organis
 
 | Domain | Responsibility |
 |--------|---------------|
-| **identity** | Customer registration, authentication, and session/token management. |
+| **identity** | Customer authentication and session management. Registration and logout support. The specific authentication mechanism is deferred to technical design. |
 | **catalog** | Books, categories, brands, product search, and related products. |
 | **cart** | Shopping cart state for authenticated customers. |
 | **checkout** | Orchestration of the checkout flow: address selection, payment simulation, and order creation. |
 | **order** | Order lifecycle: creation, status tracking, history retrieval, and cancellation. |
 | **address** | Delivery address storage and management for customers. |
-| **payment** | Simulated payment processing; payment method recording (no real credentials). |
+| **payment** | Simulated payment processing. No real credentials stored. The simplest persistence approach (separate entity vs fields on Order) will be decided at data modeling. |
 
 ---
 
@@ -208,12 +211,12 @@ The application is a **modular monolith**. Domain boundaries define code organis
 
 | Module / Package | Responsibility |
 |-----------------|----------------|
-| `identity` | Handles `Customer` registration and login. Issues and validates authentication tokens. Owns the `Customer` entity. |
-| `catalog` | Manages `Book`, `Category`, and `Brand` entities. Provides search, filtering, and product detail APIs. |
+| `identity` | Handles customer authentication. Supports registration and logout. Authentication mechanism (token type, session strategy) to be confirmed at technical design. Owns the `Customer` entity. |
+| `catalog` | Manages `Book`, `Category`, and brand/publisher grouping entities. Provides search, filtering, and product detail APIs. The final modeling of brand vs publisher is deferred to the data-model phase. |
 | `cart` | Maintains `Cart` and `CartItem` state. Handles add, update, remove operations per customer. |
 | `address` | Manages `DeliveryAddress` records owned by the customer. |
 | `checkout` | Orchestrates the checkout sequence: validate cart → select address → process simulated payment → create order. Depends on `cart`, `address`, `payment`, and `order`. |
-| `payment` | Contains simulated payment logic. Records payment method type on the order. Does not store card credentials. |
+| `payment` | Contains simulated payment logic. Does not store card credentials. The simplest persistence design for payment outcome data will be determined during data modeling. |
 | `order` | Owns `Order` and `OrderItem` entities. Provides order creation, retrieval, history listing, and cancellation. |
 | `common` | Shared utilities: exception handling, base DTOs, API response wrappers, validation helpers. |
 
@@ -225,13 +228,13 @@ The following logical resource areas will require REST APIs. Paths, HTTP methods
 
 | API Domain | Description |
 |-----------|-------------|
-| **Authentication** | Register, login, logout. |
+| **Authentication** | Login (MVP). Registration and logout (Secondary). |
 | **Customers** | Customer profile retrieval and update. |
 | **Books** | List books, search books, get book detail. |
 | **Categories** | List all categories, get books by category. |
 | **Brands** | List brands, get books by brand. |
 | **Cart** | Get cart, add item, update item quantity, remove item, clear cart. |
-| **Addresses** | List addresses, add address, update address, delete address. |
+| **Addresses** | List addresses, add address, select address for checkout (MVP). Update address, delete address (Secondary). |
 | **Checkout** | Initiate checkout, confirm payment, place order. |
 | **Orders** | Get order history, get order detail, cancel order. |
 
@@ -247,17 +250,18 @@ The following logical resource areas will require REST APIs. Paths, HTTP methods
 ### Book
 - **Business purpose:** Represents a purchasable book in the catalogue.
 - **Key information:** Title, author, description, price, cover image URL, stock availability, tentative delivery estimate, publication date.
-- **Relationships:** Belongs to one `Category`; belongs to one `Brand`; appears in many `CartItem` and `OrderItem`.
+- **Relationships:** Belongs to one `Category`; belongs to one `Brand/Publisher` grouping (see AMB-12); appears in many `CartItem` and `OrderItem`.
 
 ### Category
 - **Business purpose:** Groups books into browsable subject areas (e.g., Fiction, Technology, Science).
 - **Key information:** Name, description.
 - **Relationships:** Has many `Book`.
 
-### Brand (Publisher)
-- **Business purpose:** Represents the publisher or brand of a book.
+### Brand / Publisher
+- **Business purpose:** Represents the publisher, imprint, or brand associated with a book, used to support browsing by brand (Slide 6, Step 6).
 - **Key information:** Name, description.
 - **Relationships:** Has many `Book`.
+- **Note:** Whether "brand" and "publisher" are the same concept, separate concepts, or one is a subset of the other is not resolved by the source material. This is recorded as AMB-12 in Section 12. For MVP, a single grouping attribute will be used. The final modeling decision is deferred to the data-model phase.
 
 ### Cart
 - **Business purpose:** Holds the books a customer intends to purchase before checkout.
@@ -284,10 +288,11 @@ The following logical resource areas will require REST APIs. Paths, HTTP methods
 - **Key information:** Reference to book, quantity, unit price at time of purchase, subtotal.
 - **Relationships:** Belongs to one `Order`; references one `Book`.
 
-### Payment (record)
-- **Business purpose:** Records the simulated payment event associated with an order.
-- **Key information:** Payment method type (CREDIT_CARD, DEBIT_CARD), simulated status (SUCCESS, FAILURE), timestamp.
-- **Relationships:** Associated with one `Order`. Does NOT store card number or CVV.
+### Payment (simulated)
+- **Business purpose:** Represents the simulated payment action performed during checkout.
+- **Key information:** Payment method type selected by the customer (e.g., CREDIT_CARD, DEBIT_CARD). No card number, CVV, or sensitive credentials are stored.
+- **Relationships:** Associated with one `Order`.
+- **Note:** Whether simulated payment outcomes require a dedicated persisted entity, or whether the payment method type and result are simply recorded on the `Order` itself, is deferred to the data-model phase. The requirement is simulated payment behavior with no storage of sensitive credentials. The simplest persistence design will be selected during data modeling.
 
 ---
 
@@ -304,7 +309,7 @@ The following logical resource areas will require REST APIs. Paths, HTTP methods
 | `DeliveryAddress` | `address` | Customer-owned address records. |
 | `Order` | `order` | Confirmed purchase record. |
 | `OrderItem` | `order` | Child of Order. |
-| `Payment` | `payment` | Simulated payment record; linked to Order. |
+| `Payment` | `payment` / `order` | Simulated payment outcome. Whether a separate entity is needed is deferred to data modeling. |
 
 ---
 
@@ -343,7 +348,7 @@ See Section 12.
 
 | ID | Topic | Ambiguity | Recommended Simplest Approach |
 |----|-------|-----------|-------------------------------|
-| AMB-01 | Authentication mechanism | The materials do not specify whether to use JWT, session cookies, or Spring Security basic auth. | Use JWT (stateless Bearer token) via Spring Security. This is standard for REST APIs and straightforward to test with Postman/Insomnia. |
+| AMB-01 | Authentication mechanism | The materials do not specify whether to use JWT, session cookies, Spring Security HTTP Basic, or another approach. This is an architectural decision, not a requirements decision. | Defer to technical design. The simplest appropriate Spring Security authentication approach that supports REST API testing with Postman or Insomnia will be selected during technical design. |
 | AMB-02 | Gift/loyalty points | Gift points are mentioned (Slide 8) but no rules are given for earning, balance management, or redemption calculation. | Treat as Secondary scope. If implemented, model as a simple integer point balance on the Customer; redemption applies a fixed point-to-currency conversion defined in configuration. |
 | AMB-03 | Order cancellation eligibility | "Within 48 hours" is stated, but it is unclear whether the clock starts from order placement or payment confirmation. | Start the cancellation window from the order creation timestamp for simplicity. |
 | AMB-04 | Stock management | No inventory replenishment, reservation, or oversell prevention rules are described. | Track a simple integer `stockQuantity` on Book. Decrement on order confirmation. Block cart addition if stock is 0. No reservation during cart hold. |
@@ -354,6 +359,7 @@ See Section 12.
 | AMB-09 | User profile management | Registration and login are shown, but no profile editing screen exists. | Implement a basic GET /customers/me endpoint returning profile data. Update endpoint is Secondary. |
 | AMB-10 | Book data seeding | No mechanism for adding books to the catalogue is shown (no admin screen). | Seed initial book data via a SQL data script or Spring Boot `data.sql` for demonstration purposes. An admin API is out of scope for MVP. |
 | AMB-11 | Delivery date | A tentative delivery date is shown on the product card but no calculation rule is given. | Store a `deliveryEstimateDays` integer on the Book. The API returns it as-is. |
+| AMB-12 | Brand vs Publisher | The source material uses "brands" (Slide 6, Step 6) as a browsing dimension, but in book retail the natural grouping is typically "publisher." It is unclear whether these are the same concept, whether a book has both a brand and a publisher, or whether one is sufficient. | Record as an unresolved modeling question. For MVP, use a single grouping attribute on the Book (labeled generically until resolved). The final decision — one entity, two separate entities, or a single field — is deferred to the data-model phase. |
 
 ---
 
@@ -369,9 +375,10 @@ The minimum functionality required to complete and demonstrate the capstone end-
 
 | Area | Included |
 |------|---------|
-| Customer registration and login (JWT) | ✅ |
+| Customer login (authentication mechanism TBD at technical design) | ✅ |
+| Customer registration (Secondary — promoted to MVP if required for demonstration) | ⚠️ |
 | Landing page / book listing | ✅ |
-| Book catalogue with category and brand browsing | ✅ |
+| Book catalogue with category and brand/publisher browsing | ✅ |
 | Keyword search for books | ✅ |
 | Book detail page (including tentative delivery date) | ✅ |
 | Shopping cart (add, view, update, remove) | ✅ |
@@ -391,12 +398,14 @@ Features present in the capstone materials that are reasonable to defer until af
 
 | Feature | Source | Notes |
 |---------|--------|-------|
+| Customer registration | Slide 3, Step 1–2 (implied) | Not explicitly shown as a standalone screen. Promoted to MVP if required for end-to-end demonstration. |
+| Customer logout | Implied | Not explicitly shown in source material. |
 | Related products on product detail | Slide 6 (Step 7) | Return books from the same category. Simple query. |
 | Buy Again from order history | Slide 3 (Step 6), Slide 6 | Re-add a past order's items to cart. |
 | Recommendations based on order history | Slide 3 (Step 6) | Return books from categories the customer has previously purchased. |
 | Gift / loyalty points redemption | Slide 8 (Step 10) | Requires point balance management and redemption logic. |
 | Customer profile update | Implied | Update name, email, or password. |
-| Delivery address update and delete | Implied | Extension of MVP address management. |
+| Delivery address update and delete | Implied | Extension of MVP address management (add, list, select). |
 
 ---
 
@@ -425,19 +434,25 @@ The following shall not be implemented during the initial MVP unless explicitly 
 
 | Requirement ID(s) | Capability | Source — Slide / Step |
 |-------------------|-----------|----------------------|
-| FR-AUTH-01, FR-AUTH-02 | User Authentication | Slide 3, Steps 1–2; Slide 5 (Login Page) |
-| FR-AUTH-03, FR-AUTH-04 | Security / Session | Slide 3 Step 2 (implied); Capstone instructions |
+| FR-AUTH-02 | User Authentication (MVP) | Slide 3, Step 2; Slide 5 (Login Page) |
+| FR-AUTH-01, FR-AUTH-04 | Registration & Logout (Secondary) | Slide 3, Steps 1–2 (implied); not explicitly shown as standalone screens |
+| FR-AUTH-03 | Endpoint Security | Capstone instructions; all post-login screens |
 | FR-CAT-01 through FR-CAT-06 | Product Catalogue & Search | Slide 5 (Landing), Slide 6 (Catalogue), Slide 3 Steps 5–7 |
-| FR-CAT-07 | Related Products | Slide 6, Step 7 |
-| FR-CART-01 through FR-CART-05 | Shopping Cart | Slide 7, Step 8 |
-| FR-ADDR-01 through FR-ADDR-03 | Delivery Address | Slide 8, Step 9 |
+| FR-CAT-04 | Brand / Publisher Browsing (AMB-12) | Slide 6, Step 6 |
+| FR-CAT-07 | Related Products (Secondary) | Slide 6, Step 7 |
+| FR-CART-01 through FR-CART-04 | Shopping Cart | Slide 7, Step 8 |
+| FR-ADDR-01, FR-ADDR-02 | Delivery Address — Add & Select (MVP) | Slide 8, Step 9 |
+| FR-ADDR-03 | Delivery Address — Edit & Delete (Secondary) | Implied from Slide 8 |
 | FR-PAY-01 through FR-PAY-04 | Checkout & Simulated Payment | Slide 8, Slide 9, Steps 10–11 |
-| FR-PAY-05 | Gift Points Redemption | Slide 8, Step 10 |
+| FR-PAY-05 | Gift Points Redemption (Secondary) | Slide 8, Step 10 |
 | FR-ORD-01 through FR-ORD-06 | Order Management & Confirmation | Slide 10, Steps 11–12; Slide 3 Step 12 (cancel) |
 | BR-02 | Order Cancellation (48 hrs) | Slide 3, Step 12 |
 | BR-05 | Tentative Delivery Date | Slide 6, Step 7 |
 | NFR-04, NFR-05 | Security / No credential storage | Capstone instructions (Payment Rules) |
+| NFR-08 | Order historical data consistency | Capstone instructions (data integrity); Slide 3, Step 12 (cancellation) |
 | NFR-14 | Configuration / No secrets in code | Capstone instructions (Database Rules) |
+| AMB-01 | Authentication mechanism | Deferred to technical design — not a requirements decision |
+| AMB-12 | Brand vs Publisher | Slide 6, Step 6 — deferred to data-model phase |
 
 ---
 
