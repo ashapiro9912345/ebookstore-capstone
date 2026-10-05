@@ -209,6 +209,15 @@ recommendations, gift points, wishlist, reviews, related products) were intentio
 None. The implementation follows the approved requirements, data model, API design,
 and OpenAPI contract. No new endpoints, entities, dependencies, or architecture were introduced.
 
+### Phase 5 follow-up fix (implementation, not design)
+
+During Phase 5 local validation against PostgreSQL, `GET /books` failed with
+`function lower(bytea) does not exist`. Root cause: untyped `null` bind parameters in
+`BookRepository.search` were inferred by PostgreSQL as `bytea`, breaking `LOWER(?)`.
+Fixed by adding `CAST(:param AS string)` around the optional `title`/`authorName`
+parameters in the JPQL. No change to the OpenAPI contract or data model. See
+`docs/05-local-run-guide.md` §10.1.
+
 ---
 
 ## 8. Remaining Work (out of Phase 4 scope)
