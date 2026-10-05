@@ -1,0 +1,1145 @@
+openapi: "3.0.3"
+
+info:
+  title: E-Bookstore API
+  description: |
+    Backend REST API for the E-Bookstore capstone application.
+
+    Supports the complete customer journey:
+    browse → cart → checkout (simulated payment) → order history → cancellation.
+
+    All protected endpoints require a JWT Bearer token obtained from `POST /api/auth/login`.
+
+    A demo customer account is pre-loaded during local database setup.
+    Use `POST /auth/login` with the demo credentials to obtain a token.
+  version: "1.0.0"
+  contact:
+    name: Capstone Project
+
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Customer authentication
+  - name: Categories
+    description: Book category browsing
+  - name: Books
+    description: Book catalogue — list, search, filter, and detail
+  - name: Cart
+    description: Shopping cart management
+  - name: Addresses
+    description: Customer delivery address management
+  - name: Orders
+    description: Order placement, history, detail, and cancellation
+
+# ---------------------------------------------------------------------------
+# Security scheme
+# ---------------------------------------------------------------------------
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from POST /auth/login
+
+  # -------------------------------------------------------------------------
+  # Reusable schemas
+  # -------------------------------------------------------------------------
+  schemas:
+
+    # --- Auth ---------------------------------------------------------------
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "demo@bookstore.com"
+        password:
+          type: string
+          format: password
+          example: "demo1234"
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT Bearer token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        user:
+          $ref: "#/components/schemas/UserResponse"
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        fullName:
+          type: string
+          example: "Demo Customer"
+        email:
+          type: string
+          format: email
+          example: "demo@bookstore.com"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-10-04T14:00:00Z"
+
+    # --- Categories ---------------------------------------------------------
+
+    CategoryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Science Fiction"
+        description:
+          type: string
+          nullable: true
+          example: "Speculative fiction exploring futuristic concepts"
+
+    # --- Brands -------------------------------------------------------------
+
+    BrandResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Penguin Books"
+
+    # --- Books --------------------------------------------------------------
+
+    BookSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        title:
+          type: string
+          example: "The Pragmatic Programmer"
+        author:
+          type: string
+          example: "David Thomas, Andrew Hunt"
+        price:
+          type: number
+          description: Retail price; stored as NUMERIC(10,2), represented as JSON number
+          example: 39.99
+        stockQuantity:
+          type: integer
+          example: 15
+        deliveryEstimateDays:
+          type: integer
+          description: Calendar days from purchase to estimated delivery
+          example: 3
+        categoryId:
+          type: integer
+          format: int64
+          example: 2
+        categoryName:
+          type: string
+          example: "Technology"
+        brandId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        brandName:
+          type: string
+          nullable: true
+          example: "Addison-Wesley"
+
+    BookDetailResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        title:
+          type: string
+          example: "The Pragmatic Programmer"
+        author:
+          type: string
+          example: "David Thomas, Andrew Hunt"
+        isbn:
+          type: string
+          nullable: true
+          example: "9780135957059"
+        description:
+          type: string
+          nullable: true
+          example: "A guide to pragmatic programming practices"
+        price:
+          type: number
+          description: Retail price; stored as NUMERIC(10,2), represented as JSON number
+          example: 39.99
+        stockQuantity:
+          type: integer
+          example: 15
+        deliveryEstimateDays:
+          type: integer
+          description: Calendar days from purchase to estimated delivery
+          example: 3
+        category:
+          $ref: "#/components/schemas/CategoryResponse"
+        brand:
+          $ref: "#/components/schemas/BrandResponse"
+          nullable: true
+
+    PagedBooksResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookSummaryResponse"
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 150
+        totalPages:
+          type: integer
+          example: 8
+
+    # --- Cart ---------------------------------------------------------------
+
+    AddToCartRequest:
+      type: object
+      required:
+        - bookId
+        - quantity
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          example: 42
+        quantity:
+          type: integer
+          minimum: 1
+          example: 1
+
+    UpdateCartItemRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+
+    CartItemResponse:
+      type: object
+      properties:
+        itemId:
+          type: integer
+          format: int64
+          example: 7
+        bookId:
+          type: integer
+          format: int64
+          example: 42
+        title:
+          type: string
+          example: "The Pragmatic Programmer"
+        author:
+          type: string
+          example: "David Thomas, Andrew Hunt"
+        price:
+          type: number
+          description: Unit price; stored as NUMERIC(10,2), represented as JSON number
+          example: 39.99
+        quantity:
+          type: integer
+          example: 2
+        lineTotal:
+          type: number
+          description: price × quantity; stored as NUMERIC(10,2), represented as JSON number
+          example: 79.98
+
+    CartResponse:
+      type: object
+      properties:
+        cartId:
+          type: integer
+          format: int64
+          example: 3
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItemResponse"
+        totalAmount:
+          type: number
+          description: Sum of all line totals; stored as NUMERIC(10,2), represented as JSON number
+          example: 79.98
+
+    # --- Addresses ----------------------------------------------------------
+
+    AddressRequest:
+      type: object
+      required:
+        - recipientName
+        - streetLine1
+        - city
+        - state
+        - postalCode
+        - country
+      properties:
+        recipientName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Jane Smith"
+        streetLine1:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "123 Main Street"
+        streetLine2:
+          type: string
+          maxLength: 255
+          nullable: true
+          example: "Apt 4B"
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Austin"
+        state:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "TX"
+        postalCode:
+          type: string
+          minLength: 1
+          maxLength: 20
+          example: "78701"
+        country:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "US"
+
+    AddressResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 5
+        recipientName:
+          type: string
+          example: "Jane Smith"
+        streetLine1:
+          type: string
+          example: "123 Main Street"
+        streetLine2:
+          type: string
+          nullable: true
+          example: "Apt 4B"
+        city:
+          type: string
+          example: "Austin"
+        state:
+          type: string
+          example: "TX"
+        postalCode:
+          type: string
+          example: "78701"
+        country:
+          type: string
+          example: "US"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-10-01T10:00:00Z"
+
+    # --- Orders -------------------------------------------------------------
+
+    PlaceOrderRequest:
+      type: object
+      required:
+        - addressId
+        - paymentMethod
+      properties:
+        addressId:
+          type: integer
+          format: int64
+          description: Must belong to the authenticated customer
+          example: 5
+        paymentMethod:
+          type: string
+          enum:
+            - CREDIT_CARD
+            - DEBIT_CARD
+          example: "CREDIT_CARD"
+
+    OrderItemResponse:
+      type: object
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          example: 42
+        title:
+          type: string
+          example: "The Pragmatic Programmer"
+        author:
+          type: string
+          example: "David Thomas, Andrew Hunt"
+        quantity:
+          type: integer
+          example: 2
+        unitPrice:
+          type: number
+          description: Price at time of purchase; stored as NUMERIC(10,2), represented as JSON number
+          example: 39.99
+        lineTotal:
+          type: number
+          description: unitPrice × quantity; stored as NUMERIC(10,2), represented as JSON number
+          example: 79.98
+
+    ShippingAddressSnapshot:
+      type: object
+      description: Address captured at the time of order placement
+      properties:
+        recipientName:
+          type: string
+          example: "Jane Smith"
+        streetLine1:
+          type: string
+          example: "123 Main Street"
+        streetLine2:
+          type: string
+          nullable: true
+          example: "Apt 4B"
+        city:
+          type: string
+          example: "Austin"
+        state:
+          type: string
+          example: "TX"
+        postalCode:
+          type: string
+          example: "78701"
+        country:
+          type: string
+          example: "US"
+
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 101
+        status:
+          type: string
+          enum:
+            - CONFIRMED
+            - CANCELLED
+          example: "CONFIRMED"
+        totalAmount:
+          type: number
+          description: Order total at time of checkout; stored as NUMERIC(10,2), represented as JSON number
+          example: 79.98
+        paymentMethod:
+          type: string
+          enum:
+            - CREDIT_CARD
+            - DEBIT_CARD
+          example: "CREDIT_CARD"
+        simulatedPaymentReference:
+          type: string
+          nullable: true
+          description: Generated reference code; not a real payment token
+          example: "SIM-A3F29C1D"
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddressSnapshot"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemResponse"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-10-04T14:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-10-04T14:30:00Z"
+
+    PagedOrdersResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 5
+        totalPages:
+          type: integer
+          example: 1
+
+    # --- Errors -------------------------------------------------------------
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable summary
+          example: "Request validation failed"
+        details:
+          type: array
+          description: Field-level error details (optional)
+          items:
+            type: string
+          example:
+            - "email: must be a valid email address"
+
+  # -------------------------------------------------------------------------
+  # Reusable responses
+  # -------------------------------------------------------------------------
+  responses:
+
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "UNAUTHORIZED"
+            message: "Authentication required"
+
+    Forbidden:
+      description: Authenticated but accessing another user's resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "FORBIDDEN"
+            message: "Access denied"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "NOT_FOUND"
+            message: "Resource not found"
+
+    BadRequest:
+      description: Request validation failure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "VALIDATION_ERROR"
+            message: "Request validation failed"
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+
+  # -------------------------------------------------------------------------
+  # Reusable parameters
+  # -------------------------------------------------------------------------
+  parameters:
+
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Zero-based page number
+
+    SizeParam:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Number of items per page (max 100)
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+
+  # ==========================================================================
+  # Auth
+  # ==========================================================================
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Authenticate and receive a JWT
+      description: |
+        Authenticates the customer using email and password.
+        Returns a JWT Bearer token for use on all protected endpoints.
+        A demo customer account is pre-loaded during local database setup.
+      operationId: loginCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "INVALID_CREDENTIALS"
+                message: "Invalid email or password"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ==========================================================================
+  # Categories
+  # ==========================================================================
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: List all book categories
+      operationId: listCategories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ==========================================================================
+  # Books
+  # ==========================================================================
+
+  /books:
+    get:
+      tags:
+        - Books
+      summary: List, search, and filter books
+      operationId: listBooks
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Case-insensitive partial match on book title
+        - name: authorName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Case-insensitive partial match on author name
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: Filter by category ID
+        - name: brandId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: Filter by brand/publisher ID
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+      responses:
+        "200":
+          description: Paginated book list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedBooksResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /books/{bookId}:
+    get:
+      tags:
+        - Books
+      summary: Get full detail for a single book
+      operationId: getBook
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Book identifier
+      responses:
+        "200":
+          description: Book detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookDetailResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ==========================================================================
+  # Cart
+  # ==========================================================================
+
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Get the current customer's cart
+      operationId: getCart
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The customer's cart (items array is empty if cart has no items)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /cart/items:
+    post:
+      tags:
+        - Cart
+      summary: Add a book to the cart
+      description: |
+        Adds the specified book to the cart.
+        If the book is already in the cart, the quantity is incremented instead of creating a duplicate item.
+        Returns 422 if the book is out of stock.
+      operationId: addItemToCart
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddToCartRequest"
+      responses:
+        "200":
+          description: Cart updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "INSUFFICIENT_STOCK"
+                message: "The requested quantity exceeds available stock"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /cart/items/{itemId}:
+    put:
+      tags:
+        - Cart
+      summary: Update the quantity of a cart item
+      operationId: updateCartItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Cart item identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCartItemRequest"
+      responses:
+        "200":
+          description: Cart updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "INSUFFICIENT_STOCK"
+                message: "The requested quantity exceeds available stock"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Cart
+      summary: Remove an item from the cart
+      operationId: removeCartItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Cart item identifier
+      responses:
+        "200":
+          description: Item removed; returns the updated cart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ==========================================================================
+  # Addresses
+  # ==========================================================================
+
+  /addresses:
+    get:
+      tags:
+        - Addresses
+      summary: List the customer's saved delivery addresses
+      operationId: listAddresses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of saved addresses (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AddressResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Addresses
+      summary: Add a new delivery address
+      operationId: addAddress
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressRequest"
+      responses:
+        "201":
+          description: Address created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ==========================================================================
+  # Orders
+  # ==========================================================================
+
+  /orders:
+    post:
+      tags:
+        - Orders
+      summary: Place an order (checkout)
+      description: |
+        Runs the complete checkout flow:
+        1. Validates the cart is non-empty.
+        2. Validates the address belongs to the authenticated customer.
+        3. Simulates payment processing.
+        4. On success: creates the order in CONFIRMED status, decrements stock, clears cart items.
+        5. On simulated payment failure: returns 422 with code PAYMENT_DECLINED; no order is created.
+      operationId: placeOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaceOrderRequest"
+      responses:
+        "201":
+          description: Order confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Address not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "NOT_FOUND"
+                message: "Address not found"
+        "422":
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                emptyCart:
+                  summary: Cart is empty
+                  value:
+                    code: "CART_EMPTY"
+                    message: "Cannot place an order with an empty cart"
+                paymentDeclined:
+                  summary: Simulated payment declined
+                  value:
+                    code: "PAYMENT_DECLINED"
+                    message: "Simulated payment was declined"
+                insufficientStock:
+                  summary: Insufficient stock for one or more items
+                  value:
+                    code: "INSUFFICIENT_STOCK"
+                    message: "One or more items in the cart are no longer available in the requested quantity"
+                addressForbidden:
+                  summary: Address belongs to another user
+                  value:
+                    code: "FORBIDDEN"
+                    message: "The specified address does not belong to the current customer"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    get:
+      tags:
+        - Orders
+      summary: List the customer's order history
+      description: Returns orders sorted by creation date descending (newest first).
+      operationId: listOrders
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+      responses:
+        "200":
+          description: Paginated order history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedOrdersResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /orders/{orderId}:
+    get:
+      tags:
+        - Orders
+      summary: Get full detail for a single order
+      operationId: getOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Order identifier
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /orders/{orderId}/cancel:
+    post:
+      tags:
+        - Orders
+      summary: Cancel an order
+      description: |
+        Cancels a confirmed order. Only permitted when all of the following are true:
+        - The order belongs to the authenticated customer.
+        - The order status is CONFIRMED.
+        - The order was placed within the last 48 hours.
+        On success, sets order status to CANCELLED and restores stock for all cancelled items.
+      operationId: cancelOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Order identifier
+      responses:
+        "200":
+          description: Order cancelled; returns the updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                alreadyCancelled:
+                  summary: Order already cancelled
+                  value:
+                    code: "ORDER_ALREADY_CANCELLED"
+                    message: "This order has already been cancelled"
+                windowExpired:
+                  summary: Cancellation window expired
+                  value:
+                    code: "CANCELLATION_WINDOW_EXPIRED"
+                    message: "Orders can only be cancelled within 48 hours of placement"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
