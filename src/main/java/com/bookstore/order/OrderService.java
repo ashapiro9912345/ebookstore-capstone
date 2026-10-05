@@ -86,19 +86,22 @@ public class OrderService {
         // 1. Load cart; reject if empty
         Cart cart = cartRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new BusinessRuleException(
-                        "EMPTY_CART", "Cannot place an order with an empty cart"));
+                        "CART_EMPTY", "Cannot place an order with an empty cart"));
         List<CartItem> cartItems = cart.getItems();
         if (cartItems.isEmpty()) {
             throw new BusinessRuleException(
-                    "EMPTY_CART", "Cannot place an order with an empty cart");
+                    "CART_EMPTY", "Cannot place an order with an empty cart");
         }
 
         // 2. Verify the address belongs to the customer
         Address address = addressRepository.findById(request.getAddressId())
                 .orElseThrow(() -> new ResourceNotFoundException("Address", request.getAddressId()));
         if (!address.getUser().getId().equals(user.getId())) {
+            // Per the approved OpenAPI contract, a checkout against an address
+            // owned by another customer is reported as a 422 business-rule
+            // violation with code FORBIDDEN (see openapi.yaml /orders 422 example).
             throw new BusinessRuleException(
-                    "ADDRESS_NOT_OWNED", "The selected address does not belong to this customer");
+                    "FORBIDDEN", "The specified address does not belong to the current customer");
         }
 
         // 3 & 4. Validate stock and compute total from current prices

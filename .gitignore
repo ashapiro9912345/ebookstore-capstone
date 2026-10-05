@@ -18,3 +18,6 @@ src/main/resources/application-*.properties
 ### Logs ###
 *.log
 logs/
+
+### Local run helper (contains local-only dev values; not for commit) ###
+run-local.sh

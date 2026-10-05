@@ -1,0 +1,174 @@
+{
+  "info": {
+    "name": "E-Bookstore API (Capstone MVP)",
+    "description": "Importable Postman collection for the E-Bookstore backend MVP.\n\nCovers the full customer journey (login -> browse/search -> cart -> address -> checkout -> confirmation -> history -> detail -> cancel) plus key negative tests.\n\nSETUP\n1. Import this collection AND the environment file `ebookstore.postman_environment.json`.\n2. Start the app locally (see docs/05-local-run-guide.md). Base URL defaults to http://localhost:8080/api.\n3. Run the requests top-to-bottom. 'Login' stores the JWT into the {{token}} environment variable automatically; later requests send it as a Bearer token.\n\nNo real secrets are included. The demo credentials are the local demonstration account seeded by db/data.sql.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "{{baseUrl}}" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login (stores token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.token, 'token present').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('token', body.token);",
+                  "pm.test('user email returned', () => pm.expect(body.user.email).to.eql(pm.environment.get('demoEmail')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{demoEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Catalogue (public)",
+      "item": [
+        {
+          "name": "List categories",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/categories", "host": ["{{baseUrl}}"], "path": ["categories"] } }
+        },
+        {
+          "name": "List books (paginated)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "const b = pm.response.json();", "pm.test('has content/totalElements', () => { pm.expect(b).to.have.property('content'); pm.expect(b).to.have.property('totalElements'); });", "if (b.content.length) pm.environment.set('bookId', b.content[0].id);" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/books?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["books"], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] } }
+        },
+        {
+          "name": "Search books by title",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "const b = pm.response.json();", "pm.test('search returns results', () => pm.expect(b.totalElements).to.be.at.least(0));", "if (b.content.length) pm.environment.set('bookId', b.content[0].id);" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/books?title=clean", "host": ["{{baseUrl}}"], "path": ["books"], "query": [ { "key": "title", "value": "clean" } ] } }
+        },
+        {
+          "name": "Get book detail",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('has title & price', () => { const b = pm.response.json(); pm.expect(b).to.have.property('title'); pm.expect(b).to.have.property('price'); });" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/books/{{bookId}}", "host": ["{{baseUrl}}"], "path": ["books", "{{bookId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "3. Cart",
+      "item": [
+        {
+          "name": "Get cart",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ],
+          "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ], "url": { "raw": "{{baseUrl}}/cart", "host": ["{{baseUrl}}"], "path": ["cart"] } }
+        },
+        {
+          "name": "Add item to cart",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "const b = pm.response.json();", "pm.test('cart has items', () => pm.expect(b.items.length).to.be.at.least(1));", "pm.environment.set('cartItemId', b.items[0].itemId);" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"bookId\": {{bookId}},\n  \"quantity\": 2\n}" }, "url": { "raw": "{{baseUrl}}/cart/items", "host": ["{{baseUrl}}"], "path": ["cart", "items"] } }
+        },
+        {
+          "name": "Update cart item quantity",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ],
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"quantity\": 2\n}" }, "url": { "raw": "{{baseUrl}}/cart/items/{{cartItemId}}", "host": ["{{baseUrl}}"], "path": ["cart", "items", "{{cartItemId}}"] } }
+        },
+        {
+          "name": "Remove cart item (optional)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ],
+          "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ], "url": { "raw": "{{baseUrl}}/cart/items/{{cartItemId}}", "host": ["{{baseUrl}}"], "path": ["cart", "items", "{{cartItemId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "4. Addresses",
+      "item": [
+        {
+          "name": "List addresses (stores addressId)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "const a = pm.response.json();", "if (a.length) pm.environment.set('addressId', a[0].id);" ] } } ],
+          "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ], "url": { "raw": "{{baseUrl}}/addresses", "host": ["{{baseUrl}}"], "path": ["addresses"] } }
+        },
+        {
+          "name": "Create address",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('201', () => pm.response.to.have.status(201));", "pm.environment.set('addressId', pm.response.json().id);" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"recipientName\": \"Jane Smith\",\n  \"streetLine1\": \"456 Oak Avenue\",\n  \"streetLine2\": \"Suite 12\",\n  \"city\": \"Dallas\",\n  \"state\": \"TX\",\n  \"postalCode\": \"75201\",\n  \"country\": \"US\"\n}" }, "url": { "raw": "{{baseUrl}}/addresses", "host": ["{{baseUrl}}"], "path": ["addresses"] } }
+        }
+      ]
+    },
+    {
+      "name": "5. Orders",
+      "item": [
+        {
+          "name": "Checkout (place order, stores orderId)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('201 Created', () => pm.response.to.have.status(201));", "const o = pm.response.json();", "pm.test('status CONFIRMED', () => pm.expect(o.status).to.eql('CONFIRMED'));", "pm.test('has simulated payment reference', () => pm.expect(o.simulatedPaymentReference).to.be.a('string'));", "pm.test('has address snapshot', () => pm.expect(o.shippingAddress).to.have.property('city'));", "pm.environment.set('orderId', o.id);" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"addressId\": {{addressId}},\n  \"paymentMethod\": \"CREDIT_CARD\"\n}" }, "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] } }
+        },
+        {
+          "name": "Order history",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('has at least one order', () => pm.expect(pm.response.json().totalElements).to.be.at.least(1));" ] } } ],
+          "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ], "url": { "raw": "{{baseUrl}}/orders?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["orders"], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] } }
+        },
+        {
+          "name": "Order detail",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('matches orderId', () => pm.expect(String(pm.response.json().id)).to.eql(pm.environment.get('orderId')));" ] } } ],
+          "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ], "url": { "raw": "{{baseUrl}}/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["orders", "{{orderId}}"] } }
+        },
+        {
+          "name": "Cancel order (within 48h)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status CANCELLED', () => pm.expect(pm.response.json().status).to.eql('CANCELLED'));" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ], "url": { "raw": "{{baseUrl}}/orders/{{orderId}}/cancel", "host": ["{{baseUrl}}"], "path": ["orders", "{{orderId}}", "cancel"] } }
+        }
+      ]
+    },
+    {
+      "name": "6. Negative tests",
+      "item": [
+        {
+          "name": "Login - wrong password (401)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('401', () => pm.response.to.have.status(401));", "pm.test('code INVALID_CREDENTIALS', () => pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS'));" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{demoEmail}}\",\n  \"password\": \"wrong-password\"\n}" }, "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] } }
+        },
+        {
+          "name": "Protected endpoint - no token (401)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('401', () => pm.response.to.have.status(401));", "pm.test('code UNAUTHORIZED', () => pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED'));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/cart", "host": ["{{baseUrl}}"], "path": ["cart"] } }
+        },
+        {
+          "name": "Login - invalid payload (400)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('400', () => pm.response.to.have.status(400));", "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"\"\n}" }, "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] } }
+        },
+        {
+          "name": "Unknown book (404)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('404', () => pm.response.to.have.status(404));", "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/books/999999", "host": ["{{baseUrl}}"], "path": ["books", "999999"] } }
+        },
+        {
+          "name": "Add item - insufficient stock (422)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('422', () => pm.response.to.have.status(422));", "pm.test('code INSUFFICIENT_STOCK', () => pm.expect(pm.response.json().code).to.eql('INSUFFICIENT_STOCK'));" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"bookId\": {{bookId}},\n  \"quantity\": 100000\n}" }, "url": { "raw": "{{baseUrl}}/cart/items", "host": ["{{baseUrl}}"], "path": ["cart", "items"] } }
+        },
+        {
+          "name": "Checkout - unknown address (404)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('404', () => pm.response.to.have.status(404));", "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"addressId\": 999999,\n  \"paymentMethod\": \"CREDIT_CARD\"\n}" }, "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] } }
+        },
+        {
+          "name": "Cancel - unknown order (404)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('404', () => pm.response.to.have.status(404));", "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ], "url": { "raw": "{{baseUrl}}/orders/999999/cancel", "host": ["{{baseUrl}}"], "path": ["orders", "999999", "cancel"] } }
+        }
+      ]
+    }
+  ]
+}
