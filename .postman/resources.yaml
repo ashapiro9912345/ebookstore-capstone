@@ -1,0 +1,11 @@
+# Use this workspace to collaborate
+workspace:
+  id: 979269ef-a312-4f22-8f7a-69527f8ad4cf
+
+localResources:
+  collections:
+    - ../docs/api-testing/ebookstore.postman_collection.json
+  environments:
+    - ../docs/api-testing/ebookstore.postman_environment.json
+  specs:
+    - ../docs/api-design/openapi.yaml
